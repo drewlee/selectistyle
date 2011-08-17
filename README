@@ -1,0 +1,7 @@
+Style select elements by proxy.
+
+TO DOs:
+- provide a destroy method
+- provide a setter method to add new options dynamically
+- support option groups
+- custom LI markup
