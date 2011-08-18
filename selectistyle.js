@@ -1,14 +1,15 @@
 (function($){
 $.fn.selectistyle = function(opts){
     var $doc = $(document),
-    st = {
-        prefix: 'selectistyle',
-        onEffect: 'fadeIn',
-        offEffect: 'fadeOut',
-        speed: 'medium',
-        widthAdj: 0,
-        callback: null
-    };
+        instance = {},
+        st = {
+            prefix: 'selectistyle',
+            onEffect: 'fadeIn',
+            offEffect: 'fadeOut',
+            speed: 'medium',
+            widthAdj: 0,
+            callback: null
+        };
     
     function Selectistyle($sel){
         var cls = 'ssd-active',
@@ -17,7 +18,7 @@ $.fn.selectistyle = function(opts){
         this.$sel = $sel;
         
         this.generateIds = function(){
-            var id = this.$sel[0].id || 'select_' + Date.parse(new Date()),
+            var id = this.$sel[0].id,
                 cls = st.prefix + '_',
                 ids = {
                     sId: id,
@@ -136,10 +137,12 @@ $.fn.selectistyle = function(opts){
     $.extend(st, opts || {});
     
     return this.each(function(){
-        var $this = $(this);
+        var $this = $(this), id;
         
         if($this.is('select')){
-            new Selectistyle($this);
+            id = this.id || 'select_' + Date.parse(new Date());
+            if(!this.id){this.id = id;}
+            instance[id] = new Selectistyle($this);
         }
     });
 };
