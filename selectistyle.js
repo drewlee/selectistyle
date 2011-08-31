@@ -132,6 +132,7 @@ $.fn.selectistyle = function(opts){
         this.generateHtml();
         this.insertSrc();
         this.bindEvents();
+		$.data($sel[0], 'selectistyled', true);
     }
     
     $.extend(st, opts || {});
