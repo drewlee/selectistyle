@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Untitled</title>
+<style>
+body{font:100% Arial, sans-serif; background-color:#fff; color:#000;}
+ul, li{margin:0; padding:0; list-style-type:none;}
+
+/* structure */
+.selectistyle-container{position:relative; z-index:1;}
+.selectistyle-hotspot{display:block; position:relative; z-index:1; cursor:pointer;}
+.selectistyle-text{display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;}
+.selectistyle-arrow{display:block; height:100%; position:absolute; top:0; right:0; z-index:1;}
+.selectistyle-div{width:100%; position:absolute; z-index:1; left:0;}
+.selectistyle-ul{}
+.selectistyle-li{display:block;}
+.selectistyle-a{display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;}
+
+/* theme */
+.selectistyle-hotspot{border:1px solid #333; text-decoration:none;}
+.selectistyle-hotspot:focus{outline:none;}
+.selectistyle-text{margin-right:18px; padding:3px 5px; font-size:13px; line-height:1;}
+.selectistyle-arrow{width:18px; background-color:#ddd;}
+.selectistyle-div{top:21px;}
+.selectistyle-ul{border:1px solid #333; border-top:none;}
+.selectistyle-li{}
+.selectistyle-a{padding:2px 5px; font-size:13px; line-height:1; cursor:pointer;}
+.selectistyle-a:hover{background-color:#eee; color:#000;}
+.ssd-focus a{background-color:red;}
+.ssa-active a{background-color:#000; color:#fff;}
+
+.selectistyle-disabled{opacity:.4;}
+.selectistyle-disabled .selectistyle-hotspot{cursor:default;}
+</style>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.4/jquery.min.js"></script>
+<script src="selectistyle.js"></script>
+<script type="text/javascript">
+$(function(){
+	$('select').selectistyle();
+});
+</script>
+
+</head>
+<body>
+
+<select tabindex="1">
+	<option>one</option>
+	<option>two</option>
+	<option>three</option>
+</select>
+
+</body>
+</html>
