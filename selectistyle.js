@@ -263,8 +263,9 @@ $.extend(Selectistyle, {
 	destroy: function(){
 		this.each(function(){
 			if('selectistyleid' in $.data(this)){
-				delete $.data(this).selectistyleid;
 				instance[this.id].destroy();
+				delete $.data(this).selectistyleid;
+				delete instance[this.id];
 			}
 		});
 	}
