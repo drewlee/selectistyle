@@ -1,7 +1,16 @@
+/*
+* Selectistyle jQuery Plugin v1.3
+*
+* Copyright (c) 2012 Andrew A. Lee
+*
+* Dual licensed under the MIT and GPL licenses, located in
+* MIT-LICENSE.txt and GPL-LICENSE.txt respectively.
+*
+* Wed Apr 11 2012 00:34:10 GMT-0500 (CDT)
+*/
 ;(function($){
 var $doc,
 	counter = 0,
-	instance = {},
 	Selectistyle = function(){};
 
 Selectistyle.prototype = {
@@ -10,9 +19,11 @@ Selectistyle.prototype = {
 		this.st = st;
 		this.cls = 'ssd-active';
 		this.dCls = this.st.prefix + '-disabled';
+		this.wCls = this.st.prefix + '-active';
 		this.focusCls = 'ssd-focus';
 		this.$hilited = [];
-		this.to = null;
+		this.htSet = false;
+		this.sIdx = 0;
 		
 		this.build();
 		this.bindEvents();
@@ -46,6 +57,9 @@ Selectistyle.prototype = {
 			sIdx = elem.selectedIndex,
 			opts = elem.options;
 		
+		this.optsLength = opts.length;
+		this.sIdx = sIdx;
+		
 		var html = '<div id="' + ids.aId + '" class="' + cls + 'hotspot" tabindex="' + elem.tabIndex + '">\n'
 			+ '<span class="' + cls + 'arrow"></span>\n'
 			+ '<span class="' + cls + 'text">' + opts[sIdx].text + '</span>\n'
@@ -54,7 +68,7 @@ Selectistyle.prototype = {
 			+ '<ul id="' + ids.ulId + '" class="' + cls + 'ul">\n';
 		
 		for(var i=0; opts[i]; i++){
-			html += '<li class="' + cls + 'li' + (i === sIdx ? ' ssa-active' : '') + '">'
+			html += '<li class="' + cls + 'li' + (i === sIdx ? ' ssa-active' : '') + (i === 0 ? ' ssa-first' : '') + '">'
 				+ '<a class="' + cls + 'a">' + opts[i].text + '</a>'
 				+ '</li>\n';
 		}
@@ -73,36 +87,47 @@ Selectistyle.prototype = {
 			.append(this.html);
 	},
 	bindEvents: function(){
+		this.$wrap = $('#' + this.ids.cId);
 		this.$a  = $('#' + this.ids.aId);
 		this.$dd = $('#' + this.ids.divId);
+		this.$ul = $('#' + this.ids.ulId);
 		this.$textbox = this.$a.find('span.' + this.st.prefix + '-text');
 
 		this.$a.bind({
-			click: $.proxy(this.handleClick, this),
-			focus: $.proxy(this.handleClick, this),
-			blur: $.proxy(this.hideDropDown, this),
-			keydown: $.proxy(this.handleKeys, this)
+			mousedown: $.proxy(this.evtHandleMouseDown, this),
+			focus: $.proxy(this.evtHandleFocus, this),
+			blur: $.proxy(this.evtHideDropDown, this),
+			keydown: $.proxy(this.evtHandleKeys, this),
+			click: function(e){
+				e.preventDefault();
+				e.stopPropagation();
+			}
 		});
 		
-		this.$dd.bind('click', $.proxy(this.handleDropdown, this));
+		this.$dd
+			.bind('mousedown', $.proxy(this.evtHandleDropDown, this));
 	},
-	handleKeys: function(e){
+	evtHandleKeys: function(e){
+		if(!this.$dd.hasClass(this.cls)){return;}
+		
 		switch(e.keyCode){
 			// up key
 			case 38:
-				this.handleArrowKey(-1);
+				this.eHelperHandleArrowKey(e, -1);
 				break;
 			// down key
 			case 40:
-				this.handleArrowKey(1);
+				this.eHelperHandleArrowKey(e, 1);
 				break;
 			// enter key
 			case 13:
-				this.handleEnterKey();
+				this.eHelperHandleEnterKey(e);
 				break;
 		}
 	},
-	handleArrowKey: function(delta){
+	eHelperHandleArrowKey: function(e, delta){
+		e.preventDefault();
+		
 		var $dd = this.$dd,
 			$current = this.$hilited,
 			$adjacent = [];
@@ -110,6 +135,8 @@ Selectistyle.prototype = {
 		if($current.length){
 			$adjacent = delta > 0 ? $current.next() : $current.prev();
 			$current.removeClass(this.focusCls);
+		}else{
+			$adjacent = $dd.find('li.ssa-active')[delta > 0 ? 'next' : 'prev']();
 		}
 		
 		if(!$adjacent.length){
@@ -117,52 +144,82 @@ Selectistyle.prototype = {
 		}
 		
 		$adjacent.addClass(this.focusCls);
+		
+		this.scrollIntoView($adjacent);
 		this.$hilited = $adjacent;
 	},
-	handleEnterKey: function(){
+	eHelperHandleEnterKey: function(e){
+		e.preventDefault();
+		
 		var $current = this.$hilited;
 		
 		if($current.length){
-			$current.find('a').trigger('click');
+			$current.find('a').mousedown();
 		}
 		
+		this.$dd.click();
 		this.$a.blur();
 	},
-	hideDropDown: function(e){
-		if(!e){$doc.unbind('click', this.handleDocClick);}
-		this.$dd[this.st.offEffect](this.st.speed).removeClass(this.cls);
-	},
-	handleDocClick: function(){
-		console.log('exec');
-		this.hideDropDown();
-	},
-	handleClick: function(e){
-		var self = this,
-			$this = $(e.target),
-			cls = this.cls,
-			$dd = this.$dd;
+	evtHideDropDown: function(e){
+		if(e && e.type == 'click'){
+			if($doc){$doc.unbind('click', this.evtHideDropDown);}
+			this.eHelperBindTrigger();
+		}
+		
+		this.$wrap.removeClass(this.wCls);
+		this.$dd
+			[this.st.offEffect](this.st.speed)
+			.removeClass(this.cls);
 			
-		clearTimeout(this.to);
-		
-		this.to = setTimeout(function(){
-			if($dd.hasClass(cls)){
-				self.hideDropDown();
-			}else{
-				$dd[self.st.onEffect](self.st.speed).addClass(cls);
-				
-				if(e.type == 'click'){
-					if(!$doc){$doc = $(document);}
-					$doc.bind('click', $.proxy(self.handleDocClick, self));
-				}
-			}
-		}, 200);
-		
-		if(e.type == 'click'){e.stopPropagation();}
+		if(this.$hilited.length){
+			this.$hilited.removeClass(this.focusCls);
+			this.$hilited = [];
+		}
 	},
-	handleDropdown: function(e){
+	evtHandleMouseDown: function(e){
+		if(this.$dd.hasClass(this.cls)){
+			this.evtHideDropDown({type: 'click'});
+		}else{
+			this.eHelperUnbindTrigger();
+			this.eHelperShowDropDown();
+			
+			if(!$doc){$doc = $(document);}
+			$doc.bind('click', $.proxy(this.evtHideDropDown, this));
+		}
+	},
+	evtHandleFocus: function(e){
+		this.eHelperShowDropDown();
+	},
+	eHelperBindTrigger: function(){
+		this.$a.bind({
+			focus: $.proxy(this.evtHandleFocus, this),
+			blur:  $.proxy(this.evtHideDropDown, this)
+		});
+	},
+	eHelperUnbindTrigger: function(){
+		this.$a.unbind({
+			focus: this.evtHandleFocus,
+			blur: this.evtHideDropDown
+		});
+	},
+	eHelperShowDropDown: function(){
+		var $active = this.$ul.find('li.ssa-active');
+
+		this.$wrap.addClass(this.wCls);
+		this.$dd
+			[this.st.onEffect](this.st.speed)
+			.addClass(this.cls);
+		
+		this.setHeight();
+		
+		this.$ul.scrollTop(0);
+		this.scrollIntoView($active);
+	},
+	evtHandleDropDown: function(e){
 		var $tget = $(e.target),
 			$sel = this.$sel,
 			$a = this.$a,
+			cback = this.st.callback,
 			$li, txt, idx, cls = 'ssa-active';
 		
 		if($tget.closest('a').length){
@@ -175,11 +232,6 @@ Selectistyle.prototype = {
 			$li.addClass(cls);
 			this.$current = $li;
 			
-			if(this.$hilited.length){
-				this.$hilited.removeClass(this.focusCls);
-				this.$hilited = [];
-			}
-			
 			idx = $li.index();
 			txt = $tget.text();
 			
@@ -188,94 +240,135 @@ Selectistyle.prototype = {
 			
 			$sel.change();
 			
-			if(this.st.callback && typeof this.st.callback == 'function'){
-				this.st.callback.call($sel[0], $sel[0].value, txt);
+			if(cback && typeof cback == 'function'){
+				cback($sel, $sel[0].value, txt);
 			}
 		}
 	},
+	setHeight: function(){
+		if(this.htSet){return;}
+		
+		this.liHt = this.$ul.find('li:eq(1)').outerHeight();
+		this.ulHt = (this.st.maxView > 0 && this.optsLength > this.st.maxView) ? (this.liHt * this.st.maxView) : 'auto';
+		
+		this.$ul.css('height', this.ulHt);
+		
+		this.htSet = true;
+	},
+	scrollIntoView: function($adjacent){
+		if(this.ulHt == 'auto'){return;}
+		
+		var $ul = this.$ul,
+			topPos = $adjacent.position().top,
+			ddHt = this.ulHt,
+			sTop = $ul.scrollTop();
+		
+		if(topPos >= ddHt){
+			this.$ul.scrollTop(sTop + topPos);
+		}else if(topPos < 0){
+			this.$ul.scrollTop(sTop + topPos - ddHt + this.liHt);
+		}
+	},
 	enable: function(){
-		this.$sel[0].disabled = false;
-		this.$a[0].tabIndex = this.$sel[0].tabIndex;
-		this.$a.bind('focus', $.proxy(this.handleClick, this));
-		this.$a.parent().removeClass(this.dCls);
+		var domSel = this.$sel[0];
+		
+		domSel.disabled = false;
+		this.$a
+			.bind({
+				mousedown: $.proxy(this.evtHandleMouseDown, this),
+				focus: $.proxy(this.evtHandleFocus, this)
+			})
+			.get(0).tabIndex = domSel.tabIndex;
+			
+		this.$wrap.removeClass(this.dCls);
 	},
 	disable: function(){
 		this.$sel[0].disabled = true;
-		this.$a[0].tabIndex = -1;
-		this.$a.unbind('focus', this.handleClick);
-		this.$a.parent().addClass(this.dCls);
+		this.$a
+			.unbind({
+				mousedown: this.evtHandleMouseDown,
+				focus: this.evtHandleFocus
+			})
+			.get(0).tabIndex = -1
+			
+		this.$wrap.addClass(this.dCls);
 	},
 	destroy: function(){
-		var $parent = this.$a.parent();
-		
-		$parent
+		this.$wrap
 			.before(this.$sel)
 			.remove();
-			
+		
 		this.$sel.show();
+	},
+	reset: function(){
+		this.$dd
+			.find('li:eq(' + this.sIdx + ')')
+			.find('a')
+			.trigger('mousedown');
 	}
 };
 
 $.extend(Selectistyle, {
 	init: function(opts){
-		var $this,
-			id,
+		var instance,
 			st = {
 				prefix: 'selectistyle',
 				onEffect: 'fadeIn',
 				offEffect: 'fadeOut',
 				speed: 'medium',
 				widthAdj: 0,
+				maxView: 0,
 				callback: null
 			};
 		
 		$.extend(st, opts || {});
     
 		this.each(function(){
-			$this = $(this);
+			if('selectistyle' in $.data(this)){return;}
+			if(!this.id){this.id = 'selectid_' + counter++}
 			
-			if($this.is('select')){
-				if('selectistyleid' in $.data(this)){return;}
-				
-				id = this.id ? this.id : this.id = 'selectid_' + counter;
-				instance[id] = new Selectistyle;
-				instance[id].init($this, st);
-				
-				$.data(this, 'selectistyleid', counter++);
-			}
+			instance = new Selectistyle;
+			instance.init($(this), st);
+			
+			$.data(this, 'selectistyle', instance);
 		});	
 	},
 	enable: function(method){
 		this.each(function(){
-			if(this.id in instance){
-				instance[this.id][method || 'enable']();
+			if('selectistyle' in $.data(this)){
+				$.data(this, 'selectistyle')[method || 'enable']();
 			}
 		});
 	},
 	disable: function(){
 		Selectistyle.enable.call(this, 'disable');
 	},
-	enableOrDisable: function(method){
-		this.each(function(){
-			instance[this.id][method]();
-		});
-	},
 	destroy: function(){
 		this.each(function(){
-			if('selectistyleid' in $.data(this)){
-				instance[this.id].destroy();
-				delete $.data(this).selectistyleid;
-				delete instance[this.id];
+			if('selectistyle' in $.data(this)){
+				$.data(this, 'selectistyle').destroy();
+				delete $.data(this).selectistyle;
+			}
+		});
+	},
+	reset: function(){
+		this.each(function(){
+			if('selectistyle' in $.data(this)){
+				$.data(this, 'selectistyle').reset();
 			}
 		});
 	}
 });
 
 $.fn.selectistyle = function(opts){
-	if(typeof opts == 'string' && opts in Selectistyle){
-		Selectistyle[opts].call(this);
-	}else{
-		Selectistyle.init.call(this, opts);
+	var s = Selectistyle;
+	
+	if($(this).is('select')){
+		if(typeof opts == 'string' && opts in s){
+			s[opts].call(this);
+		}else{
+			s.init.call(this, opts);
+		}
 	}
 	
 	return this;
